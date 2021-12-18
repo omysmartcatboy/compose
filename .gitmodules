@@ -3,7 +3,7 @@
 	url = git@github.com:smartcatboy/backend.git
 [submodule "frontend"]
 	path = frontend
-	url = git@github.com:Aurora-Admin-Panel/frontend.git
+	url = git@github.com:smartcatboy/frontend.git
 [submodule "deploy"]
 	path = deploy
-	url = git@github.com:Aurora-Admin-Panel/deploy.git
+	url = git@github.com:smartcatboy/deploy.git
