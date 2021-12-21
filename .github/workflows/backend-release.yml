@@ -1,0 +1,79 @@
+name: Backend CI
+
+on:
+  push:
+    branches:
+      - dev
+  release:
+    types: [published]
+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+      -
+        name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      -
+        name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      -
+        name: Get Tag Name
+        id: vars
+        shell: bash
+        run: |
+          echo ::set-output name=tag_name::$(echo ${GITHUB_REF#refs/heads/}-$(git rev-parse --short HEAD))
+          echo ::set-output name=branch::$(echo ${GITHUB_REF#refs/heads/})
+      -
+        name: Build and push backend ${{ github.event.release.tag_name || steps.vars.outputs.tag_name }}
+        id: docker_build_backend_tagged_version
+        uses: docker/build-push-action@v2
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: smartcatboy/aurora-admin-backend:${{ github.event.release.tag_name || steps.vars.outputs.tag_name }}
+          build-args: |
+            BACKEND_APP_VERSION=${{ github.event.release.tag_name || steps.vars.outputs.tag_name }}
+      -
+        if: github.event_name == 'release'
+        name: Build and push backend latest
+        id: docker_build_backend_latest
+        uses: docker/build-push-action@v2
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: smartcatboy/aurora-admin-backend:latest
+          build-args: |
+            BACKEND_APP_VERSION=${{ github.event.release.tag_name || steps.vars.outputs.tag_name }}
+      -
+        if: github.event_name != 'release'
+        name: Build and push backend dev latest
+        id: docker_build_backend_test_latest
+        uses: docker/build-push-action@v2
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: smartcatboy/aurora-admin-backend:${{ steps.vars.outputs.branch }}-latest
+          build-args: |
+            BACKEND_APP_VERSION=${{ github.event.release.tag_name || steps.vars.outputs.tag_name }}
+      -
+        name: Backend digest
+        run: echo ${{ steps.docker_build_backend_tagged_version.outputs.digest }}
